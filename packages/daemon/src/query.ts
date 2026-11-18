@@ -1,3 +1,6 @@
+import os from "node:os";
+import path from "node:path";
+import { normalizeProjectPath } from "./paths.js";
 import { clip, toFtsQuery } from "./text.js";
 import type { MemoryDb } from "./db.js";
 
@@ -8,6 +11,7 @@ const RESPONSE_BUDGET = 12_000;
 
 export interface SearchHit {
   sessionId: string;
+  host: string;
   title: string;
   createdAt: number | null;
   snippet: string;
@@ -39,14 +43,25 @@ function bounded(limit: number | undefined): number {
   return Math.min(Math.floor(limit), MAX_LIMIT);
 }
 
+/** The open workspace. An explicit path wins, then DEVTRACE_PROJECT, then the process directory. */
+export function activeProject(explicit?: string): string | undefined {
+  const chosen = [explicit, process.env.DEVTRACE_PROJECT].find((value) => value && !value.includes("${"));
+  if (chosen) return normalizeProjectPath(chosen);
+  const cwd = process.cwd();
+  const root = path.parse(cwd).root;
+  if (cwd === os.homedir() || cwd === root) return undefined;
+  return normalizeProjectPath(cwd);
+}
+
 function projectClause(project?: string): { sql: string; params: string[] } {
   if (!project) return { sql: "", params: [] };
+  const normalized = normalizeProjectPath(project);
   return {
     sql: `AND (
-      p.workspace_key = ? OR p.project_uri = ? OR p.name = ?
-      OR p.project_uri LIKE '%' || ? OR p.workspace_key LIKE '%' || ?
+      p.project_uri = ? OR p.workspace_key = ? OR p.name = ?
+      OR instr(COALESCE(p.roots, ''), '"' || ? || '"') > 0
     )`,
-    params: [project, project, project, project, project],
+    params: [normalized, project, project, normalized],
   };
 }
 
@@ -59,7 +74,7 @@ export function searchDevMemory(
   const project = projectClause(input.project);
   const rows = db
     .prepare(
-      `SELECT t.session_id AS sessionId, s.title AS title, t.created_at AS createdAt, t.content AS content
+      `SELECT t.session_id AS sessionId, s.host AS host, s.title AS title, t.created_at AS createdAt, t.content AS content
        FROM turns_fts
        JOIN turns t ON t.id = turns_fts.turn_id
        JOIN sessions s ON s.id = t.session_id
@@ -71,12 +86,14 @@ export function searchDevMemory(
     )
     .all(match, ...project.params, bounded(input.limit)) as {
     sessionId: string;
+    host: string;
     title: string;
     createdAt: number | null;
     content: string;
   }[];
   return rows.map((row) => ({
     sessionId: row.sessionId,
+    host: row.host,
     title: row.title,
     createdAt: row.createdAt,
     snippet: clip(row.content.replace(/\s+/g, " "), 240),

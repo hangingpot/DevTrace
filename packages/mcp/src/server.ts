@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
+  activeProject,
   encodeToolResult,
   getFileAiHistory,
   getRecentSessions,
@@ -14,14 +15,19 @@ export function createMcpServer(db: MemoryDb): McpServer {
   const server = new McpServer({ name: "devtrace", version: "0.1.0" });
   server.tool(
     "search_dev_memory",
-    "Search local agent conversation history and the files changed in those sessions.",
+    "Search agent history for the current workspace. Each hit includes host cursor or qoder. Pass project only to override the open folder.",
     {
       query: z.string().describe("Keywords, including Chinese words such as 支付"),
       project: z.string().optional().describe("Workspace path, project uri, or project name"),
       limit: z.number().int().positive().max(20).optional(),
     },
     async ({ query, project, limit }) => ({
-      content: [{ type: "text", text: encodeToolResult(searchDevMemory(db, { query, project, limit })) }],
+      content: [
+        {
+          type: "text",
+          text: encodeToolResult(searchDevMemory(db, { query, project: activeProject(project), limit })),
+        },
+      ],
     }),
   );
   server.tool(
@@ -33,7 +39,12 @@ export function createMcpServer(db: MemoryDb): McpServer {
       limit: z.number().int().positive().max(20).optional(),
     },
     async ({ filePath, project, limit }) => ({
-      content: [{ type: "text", text: encodeToolResult(getFileAiHistory(db, { filePath, project, limit })) }],
+      content: [
+        {
+          type: "text",
+          text: encodeToolResult(getFileAiHistory(db, { filePath, project: activeProject(project), limit })),
+        },
+      ],
     }),
   );
   server.tool(
@@ -44,7 +55,12 @@ export function createMcpServer(db: MemoryDb): McpServer {
       project: z.string().optional(),
     },
     async ({ count, project }) => ({
-      content: [{ type: "text", text: encodeToolResult(getRecentSessions(db, { count, project })) }],
+      content: [
+        {
+          type: "text",
+          text: encodeToolResult(getRecentSessions(db, { count, project: activeProject(project) })),
+        },
+      ],
     }),
   );
   return server;

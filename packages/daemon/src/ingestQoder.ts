@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { normalizeProjectPath } from "./paths.js";
 import {
   getWatermark,
   recordIngestError,
@@ -78,12 +79,14 @@ export function ingestQoder(memory: MemoryDb, hostFile: string): { sessions: num
 }
 
 function storeSession(memory: MemoryDb, host: Database.Database, session: SessionRow): string {
-  const workspaceKey = session.project_uri || session.project_id || session.session_id;
+  const projectUri = session.project_uri ? normalizeProjectPath(session.project_uri) : undefined;
+  const workspaceKey = projectUri || session.project_id || session.session_id;
   const projectId = upsertProject(memory, {
     host: "qoder",
     workspaceKey,
     name: session.project_name ?? undefined,
-    projectUri: session.project_uri ?? undefined,
+    projectUri,
+    roots: projectUri ? [projectUri] : undefined,
   });
   return upsertSession(memory, {
     host: "qoder",

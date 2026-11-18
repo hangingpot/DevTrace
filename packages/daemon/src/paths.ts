@@ -97,6 +97,56 @@ export function readOverride(home = os.homedir()): OverrideConfig {
   }
 }
 
+/** Turn a file:// URI from workspace.json into a filesystem path. */
+export function fileUriToPath(uri: string): string {
+  const withoutScheme = uri.replace(/^file:\/\//, "");
+  let decoded = withoutScheme;
+  try {
+    decoded = decodeURIComponent(withoutScheme);
+  } catch {
+    decoded = withoutScheme;
+  }
+  if (/^\/[A-Za-z]:/.test(decoded)) return decoded.slice(1).replace(/\//g, "\\");
+  return decoded;
+}
+
+export function normalizeProjectPath(input: string): string {
+  let value = input.trim();
+  if (value.startsWith("file:")) value = fileUriToPath(value);
+  value = value.replace(/[\\/]+$/, "");
+  if (process.platform === "win32") return value.replace(/\//g, "\\").toLowerCase();
+  return value;
+}
+
+/** Cursor stores a workspace hash. The folder path lives in workspaceStorage/<hash>/workspace.json. */
+export function cursorWorkspaceFolders(stateDb: string, workspaceId: string): string[] {
+  const userDir = path.dirname(path.dirname(stateDb));
+  const file = path.join(userDir, "workspaceStorage", workspaceId, "workspace.json");
+  if (!fs.existsSync(file)) return [];
+  let parsed: { folder?: unknown; workspace?: unknown };
+  try {
+    parsed = JSON.parse(fs.readFileSync(file, "utf8")) as { folder?: unknown; workspace?: unknown };
+  } catch {
+    return [];
+  }
+  if (typeof parsed.folder === "string") return [normalizeProjectPath(parsed.folder)];
+  if (typeof parsed.workspace !== "string") return [];
+  const workspaceFile = fileUriToPath(parsed.workspace);
+  if (!fs.existsSync(workspaceFile)) return [normalizeProjectPath(path.dirname(workspaceFile))];
+  try {
+    const workspace = JSON.parse(fs.readFileSync(workspaceFile, "utf8")) as {
+      folders?: { path?: string }[];
+    };
+    const folders = (workspace.folders ?? [])
+      .map((folder) => folder.path)
+      .filter((folderPath): folderPath is string => typeof folderPath === "string" && folderPath.length > 0)
+      .map((folderPath) => normalizeProjectPath(path.resolve(path.dirname(workspaceFile), folderPath)));
+    return folders.length > 0 ? folders : [normalizeProjectPath(path.dirname(workspaceFile))];
+  } catch {
+    return [normalizeProjectPath(path.dirname(workspaceFile))];
+  }
+}
+
 export function resolveHostDb(options: {
   override?: string;
   extensionPath?: string;

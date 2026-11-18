@@ -10,6 +10,7 @@ import {
   upsertTurn,
   type MemoryDb,
 } from "./db.js";
+import { cursorWorkspaceFolders } from "./paths.js";
 import { clip } from "./text.js";
 
 const KNOWN_BUBBLE_VERSION = 3;
@@ -41,6 +42,7 @@ export function ingestCursor(memory: MemoryDb, hostFile: string): IngestStats {
       return stats;
     }
     noteComposerDataErrors(memory, host, stats);
+    refreshCursorProjectPaths(memory, host, hostFile);
     const watermark = Number(getWatermark(memory, "cursor", hostFile) ?? "-1");
     const composers = host
       .prepare(
@@ -78,6 +80,23 @@ function noteComposerDataErrors(memory: MemoryDb, host: Database.Database, stats
       recordIngestError(memory, "cursor", row.key, `composerData parse failed: ${(error as Error).message}`);
       stats.errors += 1;
     }
+  }
+}
+
+function refreshCursorProjectPaths(memory: MemoryDb, host: Database.Database, hostFile: string): void {
+  const rows = host
+    .prepare(`SELECT composerId, workspaceId, createdAt, lastUpdatedAt, value FROM composerHeaders`)
+    .all() as ComposerRow[];
+  for (const row of rows) {
+    const workspaceKey = workspaceKeyOf(row);
+    const folders = cursorWorkspaceFolders(hostFile, workspaceKey);
+    if (folders.length === 0) continue;
+    upsertProject(memory, {
+      host: "cursor",
+      workspaceKey,
+      projectUri: folders[0],
+      roots: folders,
+    });
   }
 }
 

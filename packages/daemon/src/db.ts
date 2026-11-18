@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS projects (
   workspace_key TEXT NOT NULL,
   name TEXT,
   project_uri TEXT,
+  roots TEXT,
   UNIQUE (host, workspace_key)
 );
 CREATE TABLE IF NOT EXISTS sessions (
@@ -95,6 +96,10 @@ export function openMemory(file: string): MemoryDb {
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");
   db.exec(SCHEMA);
+  const projectColumns = db.prepare(`PRAGMA table_info(projects)`).all() as { name: string }[];
+  if (!projectColumns.some((column) => column.name === "roots")) {
+    db.exec(`ALTER TABLE projects ADD COLUMN roots TEXT`);
+  }
   secureFile(file);
   if (process.platform !== "win32") fs.chmodSync(path.dirname(file), 0o700);
   return db;
@@ -135,15 +140,17 @@ export function recordIngestError(db: MemoryDb, host: string, hostKey: string, m
 
 export function upsertProject(
   db: MemoryDb,
-  project: { host: string; workspaceKey: string; name?: string; projectUri?: string },
+  project: { host: string; workspaceKey: string; name?: string; projectUri?: string; roots?: string[] },
 ): string {
   const id = `${project.host}:${project.workspaceKey}`;
+  const roots = project.roots && project.roots.length > 0 ? JSON.stringify(project.roots) : null;
   db.prepare(
-    `INSERT INTO projects (id, host, workspace_key, name, project_uri) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO projects (id, host, workspace_key, name, project_uri, roots) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(host, workspace_key) DO UPDATE SET
        name = COALESCE(excluded.name, projects.name),
-       project_uri = COALESCE(excluded.project_uri, projects.project_uri)`,
-  ).run(id, project.host, project.workspaceKey, project.name ?? null, project.projectUri ?? null);
+       project_uri = COALESCE(excluded.project_uri, projects.project_uri),
+       roots = COALESCE(excluded.roots, projects.roots)`,
+  ).run(id, project.host, project.workspaceKey, project.name ?? null, project.projectUri ?? null, roots);
   return id;
 }
 

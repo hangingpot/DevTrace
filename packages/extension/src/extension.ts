@@ -133,7 +133,7 @@ function configureMcp(host: DevHost): void {
   writeMcpConfig(file, {
     command: systemNode(),
     args: [mcpCli()],
-    env: { DEVTRACE_MEMORY_DB: memory },
+    env: { DEVTRACE_MEMORY_DB: memory, DEVTRACE_PROJECT: "${workspaceFolder}" },
   });
   void vscode.window.showInformationMessage(`DevTrace MCP saved to ${file}`);
 }
