@@ -1,0 +1,21 @@
+{
+  "name": "@devtrace/daemon",
+  "version": "0.1.0",
+  "description": "Read Cursor and Qoder session stores into a local memory database",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "devtrace": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12"
+  }
+}

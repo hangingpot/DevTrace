@@ -1,0 +1,22 @@
+{
+  "name": "devtrace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local agent memory for Cursor and Qoder",
+  "license": "MIT",
+  "workspaces": [
+    "packages/daemon",
+    "packages/mcp",
+    "packages/extension"
+  ],
+  "scripts": {
+    "build": "npm run build -w @devtrace/daemon && npm run build -w @devtrace/mcp && npm run build -w packages/extension",
+    "test": "node --import tsx --test packages/daemon/test/*.test.ts packages/mcp/test/*.test.ts packages/extension/test/*.test.ts",
+    "verify:local": "tsx scripts/verify-local.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

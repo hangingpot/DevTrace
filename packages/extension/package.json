@@ -1,0 +1,40 @@
+{
+  "name": "devtrace",
+  "displayName": "DevTrace",
+  "description": "Capture Cursor and Qoder agent memory into a local database",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "devtrace",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devtrace.pause",
+        "title": "DevTrace: Pause Collection"
+      },
+      {
+        "command": "devtrace.resume",
+        "title": "DevTrace: Resume Collection"
+      },
+      {
+        "command": "devtrace.deleteProject",
+        "title": "DevTrace: Delete Memory For This Workspace"
+      },
+      {
+        "command": "devtrace.configureMcp",
+        "title": "DevTrace: Configure MCP"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0"
+  }
+}

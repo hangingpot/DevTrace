@@ -1,0 +1,72 @@
+# DevTrace
+
+DevTrace keeps a local memory of Cursor and Qoder agent conversations and the files those conversations changed. A background collector reads the editors' own session databases, a SQLite file on your machine stores the memory, and a read-only MCP server lets either editor ask about it later.
+
+Nothing is uploaded. The collector never writes to Cursor's or Qoder's databases.
+
+## What you configure
+
+A standard install needs no paths.
+
+- On macOS and Windows the extension derives the session database from its own global storage directory.
+- Cursor's transcript is `User/globalStorage/state.vscdb` (`composerHeaders` and `bubbleId:` rows).
+- Qoder's transcript is `SharedClientCache/cache/db/local.db` (`chat_session` and `chat_message`).
+- If the daemon starts without the extension, it probes the default locations, including `%APPDATA%\Cursor` and both `%APPDATA%\Qoder` and `%APPDATA%\qoder` on Windows.
+- If that file does not exist yet, DevTrace watches the directory. The next conversation the editor saves is ingested, along with whatever is already in the file.
+
+The memory database is created at `~/.devtrace/history.db` (`%USERPROFILE%\.devtrace\history.db` on Windows).
+
+Set a path only when the editor was started with a custom data directory. Put it in `~/.devtrace/config.json`:
+
+```json
+{
+  "cursorDb": "D:\\CursorData\\User\\globalStorage\\state.vscdb",
+  "qoderDb": "D:\\QoderData\\SharedClientCache\\cache\\db\\local.db"
+}
+```
+
+## Run
+
+```bash
+npm install
+npm run build
+npm test
+node packages/daemon/dist/cli.js serve
+node packages/mcp/dist/cli.js
+```
+
+The editor extension starts `devtrace serve` for you. It does not link a native SQLite module and it does not open the editor databases.
+
+## MCP
+
+In Cursor or Qoder, run **DevTrace: Configure MCP**. That adds a `devtrace` stdio server and leaves every other MCP server in place.
+
+```json
+{
+  "mcpServers": {
+    "devtrace": {
+      "command": "node",
+      "args": ["packages/mcp/dist/cli.js"],
+      "env": { "DEVTRACE_MEMORY_DB": "/Users/you/.devtrace/history.db" }
+    }
+  }
+}
+```
+
+Tools:
+
+- `search_dev_memory` — keyword search over past conversations, including two-character Chinese words.
+- `get_file_ai_history` — AI edits for one file, with the session that made them.
+- `get_recent_sessions` — the newest sessions, the files they touched, and a short summary.
+
+Search is SQLite FTS5 after Han characters are split. It is not semantic search.
+
+## Pause and delete
+
+- **DevTrace: Pause Collection** stops new writes until **DevTrace: Resume Collection**.
+- **DevTrace: Delete Memory For This Workspace** removes DevTrace rows for the open folder. Cursor and Qoder keep their own databases.
+- The status bar shows paused, the last successful ingest time, or the last error.
+
+## Limits
+
+Session formats are private and change between editor versions. Unknown payload versions are skipped and recorded in `ingest_errors`. Tokens and `secret://` values are redacted. Tool transcripts are stored separately and are not in the default search index. File linkage prefers the editor's own checkpoint, inline diff, or Qoder working-space record. A workspace snapshot is used only while an agent turn is open and only when that path has no host patch.
