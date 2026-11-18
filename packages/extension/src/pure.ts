@@ -9,8 +9,12 @@ export interface McpEntry {
   env?: Record<string, string>;
 }
 
-export function hostFromAppName(appName: string): DevHost {
-  const name = appName.toLowerCase();
+export function hostFromAppName(
+  appName: string,
+  hints?: { uriScheme?: string; appRoot?: string; productName?: string },
+): DevHost {
+  // Qoder reports appName as "Visual Studio Code". Its URI scheme and install path still say qoder.
+  const name = [appName, hints?.productName, hints?.uriScheme, hints?.appRoot].filter(Boolean).join(" ").toLowerCase();
   if (name.includes("qoder")) return "qoder";
   if (name.includes("cursor")) return "cursor";
   return "other";

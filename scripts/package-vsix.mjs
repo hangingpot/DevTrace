@@ -45,7 +45,7 @@ function installPrebuilds(daemonDir, folder) {
   for (const abi of abis) {
     const archive = path.join(os.tmpdir(), `better-sqlite3-v${sqliteVersion}-node-v${abi}-${folder}.tar.gz`);
     const url = `https://github.com/WiseLibs/better-sqlite3/releases/download/v${sqliteVersion}/better-sqlite3-v${sqliteVersion}-node-v${abi}-${folder}.tar.gz`;
-    run("curl", ["-fsSL", "-A", "devtrace-pack", "-o", archive, url]);
+    run("curl", ["--http1.1", "-fsSL", "-A", "devtrace-pack", "-o", archive, url]);
     const extracted = fs.mkdtempSync(path.join(os.tmpdir(), "devtrace-sqlite-"));
     run("tar", ["-xzf", archive, "-C", extracted]);
     const binary = findNodeFile(extracted);

@@ -10,7 +10,7 @@ Nothing is uploaded. The collector only reads the editors' session stores. It ne
 
 Node.js 20 or newer must already be installed. The extension uses it to start the collector and the MCP server. There is no separate npm package to install.
 
-Search for **DevTrace**. There is one result. macOS Intel, macOS Apple silicon, and 64-bit Windows are three packages, and the editor downloads the one for your system.
+Search for **DevTrace Memory**. There is one result. macOS Intel, macOS Apple silicon, and 64-bit Windows are three packages, and the editor downloads the one for your system.
 
 Reload the window. **DevTrace** appears in the activity bar and opens on the current project.
 
@@ -58,10 +58,10 @@ The command replaces only the server named `devtrace`. Every other MCP server st
 A machine that only installed the extension does not have that file. The command writes the program shipped inside the extension, for example:
 
 ```text
-~/.cursor/extensions/haiyongchen.devtrace-memory-0.1.0/server/mcp/dist/cli.js
+~/.cursor/extensions/haiyongchen.devtrace-memory-0.1.1/server/mcp/dist/cli.js
 ```
 
-On Windows that file is `%USERPROFILE%\.cursor\extensions\haiyongchen.devtrace-memory-0.1.0\server\mcp\dist\cli.js`. Qoder uses the same relative location under its own extensions directory.
+On Windows that file is `%USERPROFILE%\.cursor\extensions\haiyongchen.devtrace-memory-0.1.1\server\mcp\dist\cli.js`. Qoder uses the same relative location under its own extensions directory.
 
 The generated entry looks like this:
 

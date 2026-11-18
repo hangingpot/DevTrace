@@ -9,6 +9,8 @@ test("app name identifies Cursor and Qoder", () => {
   assert.equal(hostFromAppName("Cursor"), "cursor");
   assert.equal(hostFromAppName("Qoder"), "qoder");
   assert.equal(hostFromAppName("Visual Studio Code"), "other");
+  assert.equal(hostFromAppName("Visual Studio Code", { uriScheme: "qoder", productName: "Qoder" }), "qoder");
+  assert.equal(hostFromAppName("Visual Studio Code", { appRoot: "/Applications/Qoder IDE.app/Contents/Resources/app" }), "qoder");
 });
 
 test("cursor state database sits beside the extension global storage folder", () => {

@@ -14,7 +14,7 @@ DevTrace 把 Cursor 和 Qoder 里的 Agent 对话，以及这些对话改过的�
 
 ## 安装
 
-在 Cursor 或 Qoder 的扩展里搜索 **DevTrace**，只会看到一个结果。安装时编辑器按你的系统收取对应的包：macOS Intel、macOS Apple 芯片、Windows 64 位是三份安装包，市场页面是同一个。
+在 Cursor 或 Qoder 的扩展里搜索 **DevTrace Memory**，只会看到一个结果。安装时编辑器按你的系统收取对应的包：macOS Intel、macOS Apple 芯片、Windows 64 位是三份安装包，市场页面是同一个。
 
 装好后重载窗口。左侧活动栏出现 **DevTrace**，点开是「当前项目」。
 

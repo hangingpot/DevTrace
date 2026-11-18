@@ -1,8 +1,8 @@
 {
   "name": "devtrace-memory",
-  "displayName": "DevTrace",
+  "displayName": "DevTrace Memory",
   "description": "Capture Cursor and Qoder agent memory into a local database",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "publisher": "haiyongchen",
   "icon": "media/devtrace-logo.png",
@@ -18,7 +18,7 @@
         {
           "id": "devtrace",
           "title": "DevTrace",
-          "icon": "media/devtrace-logo.png"
+          "icon": "media/activitybar.svg"
         }
       ]
     },

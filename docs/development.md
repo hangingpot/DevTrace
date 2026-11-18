@@ -63,25 +63,25 @@ node packages/mcp/dist/cli.js
 npm run package
 ```
 
-这条命令会先编译，再下载 SQLite 的官方预编译文件，最后在仓库根目录写出三份安装包。文件名里的版本来自 `packages/extension/package.json` 的 `version`。当前版本是 `0.1.0`：
+这条命令会先编译，再下载 SQLite 的官方预编译文件，最后在仓库根目录写出三份安装包。文件名里的版本来自 `packages/extension/package.json` 的 `version`。当前版本是 `0.1.1`：
 
 | 文件 | 给谁用 |
 | --- | --- |
-| `devtrace-0.1.0-darwin-x64.vsix` | Intel Mac |
-| `devtrace-0.1.0-darwin-arm64.vsix` | Apple 芯片 Mac |
-| `devtrace-0.1.0-win32-x64.vsix` | 64 位 Windows |
+| `devtrace-0.1.1-darwin-x64.vsix` | Intel Mac |
+| `devtrace-0.1.1-darwin-arm64.vsix` | Apple 芯片 Mac |
+| `devtrace-0.1.1-win32-x64.vsix` | 64 位 Windows |
 
 每一份都带有该系统上 Node 20、22、24 的 SQLite 模块。对应的 ABI 是 115、127、137。模块来自 `better-sqlite3` 12.9.0 的官方发布文件，不是在这台电脑上交叉编译的。用户机器上需要安装这三个 Node 版本中的一个。
 
 在一台 Mac 上可以打出全部三份。`--target` 只负责给安装包标上系统；真正换进去的是下载好的对应模块。
 
-不要上传没有平台标记的 `devtrace-0.1.0.vsix`。那份会装到所有系统上，Windows 和另一种 Mac 芯片会启动失败。
+不要上传没有平台标记的 `devtrace-0.1.1.vsix`。那份会装到所有系统上，Windows 和另一种 Mac 芯片会启动失败。
 
 ## 上传到市场
 
 发布者 ID 写在 `packages/extension/package.json` 的 `publisher`。现在是 `haiyongchen`。它必须和市场管理页地址栏 `/publishers/` 后面的短名字一致，不是显示名。
 
-三份安装包用同一个发布者、同一个扩展名 `devtrace-memory` 上传。市场上的显示名仍是 DevTrace。用户搜索时看不到三条结果，编辑器按系统下载对应的那一份。`devtrace` 这个名字已被其他发布者占用，不能再用。
+三份安装包用同一个发布者、同一个扩展名 `devtrace-memory` 上传。市场上的显示名是 DevTrace Memory。用户搜索时看不到三条结果，编辑器按系统下载对应的那一份。`devtrace` 和显示名 DevTrace 都已被其他发布者占用，不能再用。
 
 这个页面是 Visual Studio Marketplace。Cursor 的扩展搜索走 Open VSX，只传到微软市场，Cursor 里不一定能搜到。Qoder 用 **Install from VSIX…** 安装与本机系统一致的那一份。
 
@@ -89,7 +89,7 @@ npm run package
 
 1. 停掉手动开的 `node packages/daemon/dist/cli.js serve`。
 2. 按 `Cmd+Shift+P`，运行 **Extensions: Install from VSIX…**。
-3. 选择和本机相符的那份 `.vsix`。这台 Intel Mac 用 `devtrace-0.1.0-darwin-x64.vsix`。
+3. 选择和本机相符的那份 `.vsix`。这台 Intel Mac 用 `devtrace-0.1.1-darwin-x64.vsix`。
 4. 重载窗口。
 5. 运行一次 **DevTrace: Configure MCP**，再重载。
 
@@ -157,23 +157,23 @@ The command builds the project, downloads official `better-sqlite3` 12.9.0 prebu
 
 | File | System |
 | --- | --- |
-| `devtrace-0.1.0-darwin-x64.vsix` | Intel Mac |
-| `devtrace-0.1.0-darwin-arm64.vsix` | Apple silicon |
-| `devtrace-0.1.0-win32-x64.vsix` | 64-bit Windows |
+| `devtrace-0.1.1-darwin-x64.vsix` | Intel Mac |
+| `devtrace-0.1.1-darwin-arm64.vsix` | Apple silicon |
+| `devtrace-0.1.1-win32-x64.vsix` | 64-bit Windows |
 
 Each file contains the SQLite module for Node 20, 22, and 24 on that system (ABI 115, 127, and 137). One Mac can produce all three packages. The prebuilds are downloaded; they are not cross-compiled locally.
 
-Do not upload an untagged `devtrace-0.1.0.vsix`. The marketplace would offer that single binary to every system.
+Do not upload an untagged `devtrace-0.1.1.vsix`. The marketplace would offer that single binary to every system.
 
 ## Publish
 
 `publisher` in `packages/extension/package.json` is `haiyongchen`. It must match the short id after `/publishers/` on the marketplace management page.
 
-Upload all three packages under that publisher and the extension name `devtrace-memory`. The listing title stays DevTrace. The marketplace shows one listing and delivers the package that matches the user's system. The name `devtrace` is already used by another publisher.
+Upload all three packages under that publisher and the extension name `devtrace-memory`. The listing title is DevTrace Memory. The marketplace shows one listing and delivers the package that matches the user's system. Both the name `devtrace` and the display name DevTrace are already used by another publisher.
 
 The Visual Studio Marketplace page is separate from Open VSX, which is what Cursor searches. Qoder installs the matching `.vsix` with **Install from VSIX…**.
 
-To try a package on this Intel Mac, stop any manual `serve`, install `devtrace-0.1.0-darwin-x64.vsix`, reload, run **DevTrace: Configure MCP**, and reload again.
+To try a package on this Intel Mac, stop any manual `serve`, install `devtrace-0.1.1-darwin-x64.vsix`, reload, run **DevTrace: Configure MCP**, and reload again.
 
 Bump `version` in `packages/extension/package.json` before packaging a new release. The three filenames follow that version. A version that is already published cannot be uploaded again.
 

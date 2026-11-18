@@ -30,7 +30,12 @@ let launch: { host: DevHost; cursorDb: string; qoderDb: string } | undefined;
 let starting = false;
 
 export function activate(context: vscode.ExtensionContext): void {
-  const host = hostFromAppName(vscode.env.appName);
+  const env = vscode.env as typeof vscode.env & { productName?: string };
+  const host = hostFromAppName(env.appName, {
+    uriScheme: env.uriScheme,
+    appRoot: env.appRoot,
+    productName: env.productName,
+  });
   const cursorDb = cursorStateDb(context.globalStorageUri.fsPath);
   const qoderDb = qoderLocalDb(context.globalStorageUri.fsPath);
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
