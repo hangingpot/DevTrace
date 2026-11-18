@@ -1,5 +1,5 @@
 {
-  "name": "devtrace",
+  "name": "devtrace-memory",
   "displayName": "DevTrace",
   "description": "Capture Cursor and Qoder agent memory into a local database",
   "version": "0.1.0",

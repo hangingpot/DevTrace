@@ -58,10 +58,10 @@ MCP 不会在安装时自动写好。每个编辑器配置一次。
 新用户的电脑上没有这个文件。命令写入的 `args` 是插件安装目录里的程序，例如：
 
 ```text
-~/.cursor/extensions/haiyongchen.devtrace-0.1.0/server/mcp/dist/cli.js
+~/.cursor/extensions/haiyongchen.devtrace-memory-0.1.0/server/mcp/dist/cli.js
 ```
 
-Windows 上对应目录在 `%USERPROFILE%\.cursor\extensions\haiyongchen.devtrace-0.1.0\server\mcp\dist\cli.js`。Qoder 的扩展目录同理，位于 Qoder 的 extensions 文件夹。
+Windows 上对应目录在 `%USERPROFILE%\.cursor\extensions\haiyongchen.devtrace-memory-0.1.0\server\mcp\dist\cli.js`。Qoder 的扩展目录同理，位于 Qoder 的 extensions 文件夹。
 
 生成的配置类似：
 

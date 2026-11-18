@@ -58,10 +58,10 @@ The command replaces only the server named `devtrace`. Every other MCP server st
 A machine that only installed the extension does not have that file. The command writes the program shipped inside the extension, for example:
 
 ```text
-~/.cursor/extensions/haiyongchen.devtrace-0.1.0/server/mcp/dist/cli.js
+~/.cursor/extensions/haiyongchen.devtrace-memory-0.1.0/server/mcp/dist/cli.js
 ```
 
-On Windows that file is `%USERPROFILE%\.cursor\extensions\haiyongchen.devtrace-0.1.0\server\mcp\dist\cli.js`. Qoder uses the same relative location under its own extensions directory.
+On Windows that file is `%USERPROFILE%\.cursor\extensions\haiyongchen.devtrace-memory-0.1.0\server\mcp\dist\cli.js`. Qoder uses the same relative location under its own extensions directory.
 
 The generated entry looks like this:
 

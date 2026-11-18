@@ -81,7 +81,7 @@ npm run package
 
 发布者 ID 写在 `packages/extension/package.json` 的 `publisher`。现在是 `haiyongchen`。它必须和市场管理页地址栏 `/publishers/` 后面的短名字一致，不是显示名。
 
-三份安装包用同一个发布者、同一个扩展名 `devtrace` 上传。市场上只出现一个 DevTrace。用户搜索时看不到三条结果，编辑器按系统下载对应的那一份。
+三份安装包用同一个发布者、同一个扩展名 `devtrace-memory` 上传。市场上的显示名仍是 DevTrace。用户搜索时看不到三条结果，编辑器按系统下载对应的那一份。`devtrace` 这个名字已被其他发布者占用，不能再用。
 
 这个页面是 Visual Studio Marketplace。Cursor 的扩展搜索走 Open VSX，只传到微软市场，Cursor 里不一定能搜到。Qoder 用 **Install from VSIX…** 安装与本机系统一致的那一份。
 
@@ -169,7 +169,7 @@ Do not upload an untagged `devtrace-0.1.0.vsix`. The marketplace would offer tha
 
 `publisher` in `packages/extension/package.json` is `haiyongchen`. It must match the short id after `/publishers/` on the marketplace management page.
 
-Upload all three packages under that publisher and the extension name `devtrace`. The marketplace shows one listing and delivers the package that matches the user's system.
+Upload all three packages under that publisher and the extension name `devtrace-memory`. The listing title stays DevTrace. The marketplace shows one listing and delivers the package that matches the user's system. The name `devtrace` is already used by another publisher.
 
 The Visual Studio Marketplace page is separate from Open VSX, which is what Cursor searches. Qoder installs the matching `.vsix` with **Install from VSIX…**.
 
