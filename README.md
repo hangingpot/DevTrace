@@ -1,5 +1,11 @@
 # DevTrace
 
+[中文](#zh) · [English](#en)
+
+<a id="zh"></a>
+
+## 中文
+
 DevTrace 把 Cursor 和 Qoder 里的 Agent 对话，以及这些对话改过的文件，记在你自己的电脑上。之后可以在任一编辑器里用 MCP 查这份记录。
 
 数据不会上传。采集进程只读编辑器自己的会话库，不会修改 Cursor 或 Qoder 的数据库。
@@ -82,9 +88,13 @@ Qoder 会话标题和项目路径是明文。`chat_message.content` 是密文，
 
 认不出的会话格式会跳过，并记在 `ingest_errors`。令牌和 `secret://` 的值会从记忆库去掉。工具调用记录不在默认搜索里。同一台电脑上的 Cursor 和 Qoder 共用一份 `history.db`。
 
----
+[English](#en)
 
-# English
+<a id="en"></a>
+
+## English
+
+[中文](#zh)
 
 DevTrace stores Cursor and Qoder agent conversations, and the files they changed, on your computer. Either editor can query that record through MCP.
 
@@ -165,3 +175,5 @@ Paths are found automatically. Set `cursorDb` and `qoderDb` in `~/.devtrace/conf
 Qoder titles and project paths are plaintext. `chat_message.content` is ciphertext and is not stored. Conversation text comes from the plaintext `.jsonl` files.
 
 Unrecognized session formats are skipped and listed in `ingest_errors`. Tokens and `secret://` values are removed. Tool-call transcripts are not in the default search. Cursor and Qoder on the same computer share one `history.db`.
+
+[中文](#zh)

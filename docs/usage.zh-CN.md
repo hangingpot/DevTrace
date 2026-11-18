@@ -1,5 +1,7 @@
 # DevTrace 使用说明
 
+[English](usage.en.md)
+
 DevTrace 把 Cursor 和 Qoder 里的 Agent 对话，以及这些对话改过的文件，记在你自己电脑上的一个数据库里。之后任一编辑器都可以通过 MCP 查询这份记录。
 
 数据不会上传。采集进程只读编辑器自己的会话库，不会改 Cursor 或 Qoder 的数据库。

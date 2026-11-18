@@ -1,5 +1,9 @@
 # 开发说明
 
+[English](#en)
+
+<a id="zh"></a>
+
 用户看到的说明是仓库根目录的 `README.md`。市场页面用的也是这份文件。这里只写怎么在本仓库里编译、测试和打包。
 
 ## 目录
@@ -93,9 +97,13 @@ npm run package
 
 只改 `packages/extension/package.json` 里的 `version`，然后重新执行 `npm run package`。三份文件名会跟着变。已经上传过的版本不能用同一个版本号再传一次。
 
----
+[English](#en)
+
+<a id="en"></a>
 
 # Development
+
+[中文](#zh)
 
 The marketplace page is the root `README.md`. This file is how to build and package the repository.
 
@@ -168,3 +176,5 @@ The Visual Studio Marketplace page is separate from Open VSX, which is what Curs
 To try a package on this Intel Mac, stop any manual `serve`, install `devtrace-0.1.0-darwin-x64.vsix`, reload, run **DevTrace: Configure MCP**, and reload again.
 
 Bump `version` in `packages/extension/package.json` before packaging a new release. The three filenames follow that version. A version that is already published cannot be uploaded again.
+
+[中文](#zh)

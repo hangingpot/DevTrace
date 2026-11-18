@@ -1,5 +1,7 @@
 # DevTrace User Guide
 
+[中文](usage.zh-CN.md)
+
 DevTrace keeps a local record of Cursor and Qoder agent conversations and the files those conversations changed. Either editor can query that record later through MCP.
 
 Nothing is uploaded. The collector only reads the editors' session stores. It never writes to Cursor's or Qoder's databases.
