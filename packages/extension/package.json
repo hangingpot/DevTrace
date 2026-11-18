@@ -12,6 +12,24 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "devtrace",
+          "title": "DevTrace",
+          "icon": "media/devtrace.svg"
+        }
+      ]
+    },
+    "views": {
+      "devtrace": [
+        {
+          "type": "webview",
+          "id": "devtrace.home",
+          "name": "当前项目"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "devtrace.pause",
@@ -26,8 +44,16 @@
         "title": "DevTrace: Delete Memory For This Workspace"
       },
       {
+        "command": "devtrace.resetMemory",
+        "title": "DevTrace: Clear Memory and Reimport"
+      },
+      {
         "command": "devtrace.configureMcp",
         "title": "DevTrace: Configure MCP"
+      },
+      {
+        "command": "devtrace.query",
+        "title": "DevTrace: Query Current Project"
       }
     ]
   },

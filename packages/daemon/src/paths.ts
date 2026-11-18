@@ -21,6 +21,11 @@ export function memoryDir(home = os.homedir()): string {
   return path.join(home, ".devtrace");
 }
 
+/** Qoder writes plaintext transcripts under this directory, separate from the encrypted local.db. */
+export function qoderConfigHome(home = os.homedir()): string {
+  return path.join(home, ".qoder");
+}
+
 export function memoryDbPath(home = os.homedir()): string {
   return path.join(memoryDir(home), "history.db");
 }

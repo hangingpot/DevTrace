@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import Database from "better-sqlite3";
-import { openMemory } from "../src/db.js";
+import { openMemory, clearMemory } from "../src/db.js";
 import { ingestCursor } from "../src/ingestCursor.js";
 import { ingestQoder } from "../src/ingestQoder.js";
 
@@ -80,7 +80,7 @@ test("cursor ingest keeps turns, skips secrets and unknown versions, and does no
   second.close();
 });
 
-test("qoder ingest uses chat_message, keeps tool text out of search, and stores accepted diffs", () => {
+test("qoder ingest reads plaintext jsonl, ignores encrypted chat_message, and stores accepted diffs", () => {
   const dir = tempDir();
   const hostFile = path.join(dir, "local.db");
   const host = new Database(hostFile);
@@ -112,8 +112,8 @@ test("qoder ingest uses chat_message, keeps tool text out of search, and stores 
      VALUES (?, ?, ?, ?, ?, ?)`,
   ).run("s1", "跨域会话", "/work/app", "app", 1, 5);
   const message = host.prepare(`INSERT INTO chat_message (id, session_id, role, content, gmt_create) VALUES (?, ?, ?, ?, ?)`);
-  message.run("m1", "s1", "user", "上次跨域报错怎么解的", 2);
-  message.run("m2", "s1", "assistant", "改了代理白名单", 3);
+  message.run("m1", "s1", "user", "CIPHERTEXT_NOT_PLAIN", 2);
+  message.run("m2", "s1", "assistant", "CIPHERTEXT_NOT_PLAIN", 3);
   message.run("m3", "s1", "tool", "tool payload should stay out of search", 4);
   host.prepare(`INSERT INTO chat_snapshot (snapshot_id, session_id, chat_record_id) VALUES (?, ?, ?)`).run("snap", "s1", "r1");
   host.prepare(
@@ -134,9 +134,44 @@ test("qoder ingest uses chat_message, keeps tool text out of search, and stores 
   ).run("item-bad", "s1", "snap", "/work/app/failed.ts", "APPLYING_FAILED", "LOCAL_FILE", JSON.stringify({ diffInfo: { add: 1 } }));
   host.close();
 
+  const qoderHome = path.join(dir, "qoder-home");
+  const transcript = path.join(qoderHome, "projects", "-work-app", "transcript", "s1.jsonl");
+  fs.mkdirSync(path.dirname(transcript), { recursive: true });
+  fs.writeFileSync(
+    transcript,
+    [
+      JSON.stringify({
+        type: "user",
+        sessionId: "s1",
+        cwd: "/work/app",
+        timestamp: "2026-11-13T15:04:28.000Z",
+        message: { role: "user", content: "上次跨域报错怎么解的" },
+      }),
+      JSON.stringify({
+        type: "assistant",
+        sessionId: "s1",
+        cwd: "/work/app",
+        timestamp: "2026-11-13T15:04:29.000Z",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "text", text: "改了代理白名单" },
+            { type: "tool_use", name: "shell", input: { cmd: "tool payload should stay out of search" } },
+          ],
+        },
+      }),
+    ].join("\n"),
+  );
+  const cache = path.join(qoderHome, "cache", "projects", "app-deadbeef", "conversation-history", "s1", "s1.jsonl");
+  fs.mkdirSync(path.dirname(cache), { recursive: true });
+  fs.writeFileSync(
+    cache,
+    `${JSON.stringify({ role: "user", message: { content: [{ type: "text", text: "CACHE_SHOULD_NOT_WIN" }] } })}\n`,
+  );
+
   const memory = openMemory(path.join(dir, "history.db"));
-  ingestQoder(memory, hostFile);
-  ingestQoder(memory, hostFile);
+  ingestQoder(memory, hostFile, qoderHome);
+  ingestQoder(memory, hostFile, qoderHome);
   const turns = memory.prepare(`SELECT role, content FROM turns ORDER BY created_at`).all() as { role: string; content: string }[];
   assert.deepEqual(turns, [
     { role: "user", content: "上次跨域报错怎么解的" },
@@ -144,12 +179,37 @@ test("qoder ingest uses chat_message, keeps tool text out of search, and stores 
   ]);
   const tools = memory.prepare(`SELECT COUNT(*) AS n FROM tool_messages`).get() as { n: number };
   assert.equal(tools.n, 1);
-  const searched = memory.prepare(`SELECT COUNT(*) AS n FROM turns_fts WHERE turns_fts MATCH 'tool'`).get() as { n: number };
+  const searched = memory.prepare(`SELECT COUNT(*) AS n FROM turns_fts WHERE turns_fts MATCH 'payload'`).get() as { n: number };
   assert.equal(searched.n, 0);
   const files = memory.prepare(`SELECT path FROM file_changes`).all() as { path: string }[];
   assert.deepEqual(files.map((row) => row.path), ["/work/app/proxy.ts"]);
   const raw = fs.readFileSync(path.join(dir, "history.db"));
   assert.equal(raw.includes(Buffer.from("ONLY_IN_ANSWER")), false);
   assert.equal(raw.includes(Buffer.from("supabase-secret-token")), false);
+  assert.equal(raw.includes(Buffer.from("CIPHERTEXT_NOT_PLAIN")), false);
+  assert.equal(raw.includes(Buffer.from("CACHE_SHOULD_NOT_WIN")), false);
+  memory.close();
+});
+
+test("clearMemory removes turns and watermarks so the same jsonl imports again", () => {
+  const dir = tempDir();
+  const qoderHome = path.join(dir, "qoder-home");
+  const cache = path.join(qoderHome, "cache", "projects", "app-1", "conversation-history", "s1", "s1.jsonl");
+  fs.mkdirSync(path.dirname(cache), { recursive: true });
+  fs.writeFileSync(
+    cache,
+    `${JSON.stringify({ role: "user", message: { content: [{ type: "text", text: "重新拉取这条" }] } })}\n`,
+  );
+  const memory = openMemory(path.join(dir, "history.db"));
+  const count = () => (memory.prepare(`SELECT COUNT(*) AS n FROM turns`).get() as { n: number }).n;
+  ingestQoder(memory, "", qoderHome);
+  ingestQoder(memory, "", qoderHome);
+  assert.equal(count(), 1);
+  clearMemory(memory);
+  assert.equal(count(), 0);
+  assert.equal((memory.prepare(`SELECT COUNT(*) AS n FROM watermarks`).get() as { n: number }).n, 0);
+  ingestQoder(memory, "", qoderHome);
+  const turns = memory.prepare(`SELECT content FROM turns`).all() as { content: string }[];
+  assert.deepEqual(turns.map((row) => row.content), ["重新拉取这条"]);
   memory.close();
 });

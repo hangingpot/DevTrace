@@ -10,7 +10,7 @@ A standard install needs no paths.
 
 - On macOS and Windows the extension derives the session database from its own global storage directory.
 - Cursor's transcript is `User/globalStorage/state.vscdb` (`composerHeaders` and `bubbleId:` rows).
-- Qoder's transcript is `SharedClientCache/cache/db/local.db` (`chat_session` and `chat_message`).
+- Qoder's transcript text is the plaintext `.jsonl` under `~/.qoder/projects/*/transcript` and `~/.qoder/cache/projects/*/conversation-history`. `local.db` still supplies the project and file list; its `chat_message.content` is ciphertext and is not stored.
 - If the daemon starts without the extension, it probes the default locations, including `%APPDATA%\Cursor` and both `%APPDATA%\Qoder` and `%APPDATA%\qoder` on Windows.
 - If that file does not exist yet, DevTrace watches the directory. The next conversation the editor saves is ingested, along with whatever is already in the file.
 
@@ -65,7 +65,9 @@ Search is SQLite FTS5 after Han characters are split. It is not semantic search.
 
 - **DevTrace: Pause Collection** stops new writes until **DevTrace: Resume Collection**.
 - **DevTrace: Delete Memory For This Workspace** removes DevTrace rows for the open folder. Cursor and Qoder keep their own databases.
-- The status bar shows paused, the last successful ingest time, or the last error.
+- **DevTrace: Clear Memory and Reimport** erases `history.db` and imports Cursor and Qoder history again. Editor databases stay untouched.
+- The status bar shows paused, the last successful ingest time, or the last error. Click it to open the DevTrace sidebar.
+- The sidebar shows Cursor and Qoder session counts for the open folder, and the path of `history.db`. The path can be selected or copied with **复制**. Counts refresh on their own when new sessions are stored. **查询** reads the editors again. **重置** clears `history.db` and imports again.
 
 ## Limits
 

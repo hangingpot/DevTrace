@@ -13,6 +13,7 @@ import {
   writeMcpConfig,
   type DevHost,
 } from "./pure.js";
+import { DevTraceViewProvider, type ProjectStats } from "./view.js";
 
 interface DaemonInfo {
   pid: number;
@@ -22,14 +23,23 @@ interface DaemonInfo {
 
 let statusBar: vscode.StatusBarItem | undefined;
 let poll: NodeJS.Timeout | undefined;
+let homeView: DevTraceViewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   const host = hostFromAppName(vscode.env.appName);
   const cursorDb = cursorStateDb(context.globalStorageUri.fsPath);
   const qoderDb = qoderLocalDb(context.globalStorageUri.fsPath);
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.command = `${DevTraceViewProvider.viewId}.focus`;
+  statusBar.tooltip = "打开 DevTrace";
   statusBar.show();
   context.subscriptions.push(statusBar);
+  homeView = new DevTraceViewProvider({
+    stats: () => loadProjectStats(false),
+    query: () => loadProjectStats(true),
+    reset: () => resetFromView(),
+  });
+  context.subscriptions.push(vscode.window.registerWebviewViewProvider(DevTraceViewProvider.viewId, homeView));
   void ensureDaemon(host, cursorDb, qoderDb);
   poll = setInterval(() => void refreshStatus(), 5_000);
   context.subscriptions.push({ dispose: () => poll && clearInterval(poll) });
@@ -37,7 +47,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("devtrace.pause", () => postDaemon("/pause")),
     vscode.commands.registerCommand("devtrace.resume", () => postDaemon("/resume")),
     vscode.commands.registerCommand("devtrace.deleteProject", () => deleteCurrentProject()),
+    vscode.commands.registerCommand("devtrace.resetMemory", () => resetMemory()),
     vscode.commands.registerCommand("devtrace.configureMcp", () => configureMcp(host)),
+    vscode.commands.registerCommand("devtrace.query", () => homeView?.refresh()),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => void homeView?.refresh()),
   );
   void refreshStatus();
 }
@@ -90,12 +103,14 @@ async function refreshStatus(): Promise<void> {
   const info = readInfo();
   if (!info) {
     statusBar.text = "DevTrace: waiting";
+    void homeView?.refresh();
     return;
   }
   try {
     const body = await request(info, "GET", "/status");
     const parsed = JSON.parse(body) as { paused: boolean; lastSuccessAt: number | null; lastError: string | null };
     statusBar.text = formatStatus(parsed);
+    void homeView?.refresh();
   } catch (error) {
     statusBar.text = formatStatus({ paused: false, lastSuccessAt: null, lastError: (error as Error).message });
   }
@@ -121,6 +136,75 @@ async function deleteCurrentProject(): Promise<void> {
   );
   if (answer !== "Delete") return;
   await postDaemon("/delete-project", { workspacePath: folder });
+}
+
+async function resetMemory(): Promise<void> {
+  const answer = await vscode.window.showWarningMessage(
+    "Clear all DevTrace memory and import Cursor and Qoder history again? Editor databases stay untouched.",
+    { modal: true },
+    "Clear and Reimport",
+  );
+  if (answer !== "Clear and Reimport") return;
+  if (!readInfo()) {
+    void vscode.window.showWarningMessage("DevTrace daemon is not running.");
+    return;
+  }
+  await postDaemon("/reset");
+  void vscode.window.showInformationMessage("DevTrace memory cleared and import started.");
+  void homeView?.refresh();
+}
+
+function currentProject(): string | undefined {
+  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
+function memoryDatabasePath(): string {
+  if (process.env.DEVTRACE_MEMORY_DB) return process.env.DEVTRACE_MEMORY_DB;
+  const home = process.env.DEVTRACE_HOME || os.homedir();
+  return path.join(home, ".devtrace", "history.db");
+}
+
+async function loadProjectStats(reingest: boolean): Promise<ProjectStats> {
+  const project = currentProject() ?? null;
+  const memoryDb = memoryDatabasePath();
+  if (!project) {
+    return { project: null, memoryDb, cursor: { sessions: 0, turns: 0 }, qoder: { sessions: 0, turns: 0 }, updatedAt: new Date().toLocaleTimeString() };
+  }
+  const info = readInfo();
+  if (!info) {
+    return { project, memoryDb, cursor: { sessions: 0, turns: 0 }, qoder: { sessions: 0, turns: 0 }, error: "采集进程没在运行" };
+  }
+  try {
+    const statsPath = reingest ? "/refresh" : `/stats?project=${encodeURIComponent(project ?? "")}`;
+    const body = reingest
+      ? await request(info, "POST", "/refresh", { project: project ?? "" })
+      : await request(info, "GET", statsPath);
+    const parsed = JSON.parse(body) as ProjectStats;
+    return { ...parsed, project: parsed.project ?? project, memoryDb: parsed.memoryDb || memoryDb, updatedAt: new Date().toLocaleTimeString() };
+  } catch (error) {
+    return {
+      project,
+      memoryDb,
+      cursor: { sessions: 0, turns: 0 },
+      qoder: { sessions: 0, turns: 0 },
+      error: (error as Error).message,
+    };
+  }
+}
+
+async function resetFromView(): Promise<ProjectStats> {
+  const answer = await vscode.window.showWarningMessage(
+    "Clear all DevTrace memory and import Cursor and Qoder history again? Editor databases stay untouched.",
+    { modal: true },
+    "Clear and Reimport",
+  );
+  if (answer !== "Clear and Reimport") return loadProjectStats(false);
+  if (!readInfo()) {
+    void vscode.window.showWarningMessage("DevTrace daemon is not running.");
+    return loadProjectStats(false);
+  }
+  await postDaemon("/reset");
+  return loadProjectStats(false);
 }
 
 function configureMcp(host: DevHost): void {

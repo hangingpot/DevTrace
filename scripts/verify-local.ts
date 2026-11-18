@@ -4,7 +4,7 @@ import path from "node:path";
 import { openMemory } from "../packages/daemon/src/db.js";
 import { ingestCursor } from "../packages/daemon/src/ingestCursor.js";
 import { ingestQoder } from "../packages/daemon/src/ingestQoder.js";
-import { platformCandidates } from "../packages/daemon/src/paths.js";
+import { platformCandidates, qoderConfigHome } from "../packages/daemon/src/paths.js";
 import { searchDevMemory, getFileAiHistory } from "../packages/daemon/src/query.js";
 
 const home = os.homedir();
@@ -15,7 +15,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "devtrace-verify-"));
 const memory = openMemory(path.join(dir, "history.db"));
 
 if (cursor) ingestCursor(memory, cursor);
-if (qoder) ingestQoder(memory, qoder);
+if (qoder || fs.existsSync(qoderConfigHome(home))) ingestQoder(memory, qoder ?? "", qoderConfigHome(home));
 
 const sessions = memory.prepare(`SELECT title FROM sessions`).all() as { title: string }[];
 const files = memory.prepare(`SELECT path FROM file_changes LIMIT 1`).all() as { path: string }[];

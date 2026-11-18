@@ -38,6 +38,46 @@ export interface RecentSession {
   files: string[];
 }
 
+export interface HostRecordCount {
+  sessions: number;
+  turns: number;
+}
+
+export interface ProjectHostCounts {
+  project: string | null;
+  cursor: HostRecordCount;
+  qoder: HostRecordCount;
+}
+
+const EMPTY_COUNT: HostRecordCount = { sessions: 0, turns: 0 };
+
+export function projectHostCounts(db: MemoryDb, project?: string): ProjectHostCounts {
+  const normalized = project ? normalizeProjectPath(project) : null;
+  const filter = projectClause(normalized ?? undefined);
+  const rows = db
+    .prepare(
+      `SELECT s.host AS host, COUNT(DISTINCT s.id) AS sessions, COUNT(t.id) AS turns
+       FROM sessions s
+       LEFT JOIN projects p ON p.id = s.project_id
+       LEFT JOIN turns t ON t.session_id = s.id
+       WHERE s.host IN ('cursor', 'qoder')
+       ${filter.sql}
+       GROUP BY s.host`,
+    )
+    .all(...filter.params) as { host: string; sessions: number; turns: number }[];
+  const counts: ProjectHostCounts = {
+    project: normalized,
+    cursor: { ...EMPTY_COUNT },
+    qoder: { ...EMPTY_COUNT },
+  };
+  for (const row of rows) {
+    if (row.host === "cursor" || row.host === "qoder") {
+      counts[row.host] = { sessions: Number(row.sessions), turns: Number(row.turns) };
+    }
+  }
+  return counts;
+}
+
 function bounded(limit: number | undefined): number {
   if (!limit || limit < 1) return DEFAULT_LIMIT;
   return Math.min(Math.floor(limit), MAX_LIMIT);

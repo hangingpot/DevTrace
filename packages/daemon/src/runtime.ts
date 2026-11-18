@@ -3,11 +3,12 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { deleteProject, openMemory, type MemoryDb } from "./db.js";
+import { clearMemory, deleteProject, openMemory, type MemoryDb } from "./db.js";
 import { applyWorkspaceFallback, findOpenSession } from "./fallback.js";
 import { ingestCursor } from "./ingestCursor.js";
 import { ingestQoder } from "./ingestQoder.js";
-import { memoryDbPath, memoryDir, platformCandidates, readOverride, resolveHostDb } from "./paths.js";
+import { memoryDbPath, memoryDir, platformCandidates, qoderConfigHome, readOverride, resolveHostDb } from "./paths.js";
+import { projectHostCounts } from "./query.js";
 
 export interface DaemonState {
   paused: boolean;
@@ -73,7 +74,7 @@ export interface ServeOptions {
   platform?: NodeJS.Platform;
 }
 
-export function hostWatches(options: ServeOptions): { cursor: string; qoder: string } {
+export function hostWatches(options: ServeOptions): { cursor: string; qoder: string; qoderHome: string } {
   const home = options.home ?? os.homedir();
   const platform = options.platform ?? process.platform;
   const env = options.env ?? process.env;
@@ -89,12 +90,13 @@ export function hostWatches(options: ServeOptions): { cursor: string; qoder: str
     extensionPath: options.qoderDb,
     candidates: candidates.qoder,
   });
-  return { cursor: cursor.watch, qoder: qoder.watch };
+  const qoderHome = env.DEVTRACE_QODER_HOME || qoderConfigHome(home);
+  return { cursor: cursor.watch, qoder: qoder.watch, qoderHome };
 }
 
-export function ingestAvailable(memory: MemoryDb, watches: { cursor: string; qoder: string }): void {
+export function ingestAvailable(memory: MemoryDb, watches: { cursor: string; qoder: string; qoderHome: string }): void {
   if (fs.existsSync(watches.cursor)) ingestCursor(memory, watches.cursor);
-  if (fs.existsSync(watches.qoder)) ingestQoder(memory, watches.qoder);
+  ingestQoder(memory, watches.qoder, watches.qoderHome);
 }
 
 export function startControlServer(input: {
@@ -102,6 +104,8 @@ export function startControlServer(input: {
   state: DaemonState;
   token: string;
   home: string;
+  memoryFile: string;
+  reingest?: () => void;
 }): http.Server {
   const server = http.createServer(async (req, res) => {
     if (req.headers["x-devtrace-token"] !== input.token) {
@@ -118,8 +122,15 @@ export function startControlServer(input: {
           lastSuccessAt: input.state.lastSuccessAt,
           lastError: input.state.lastError,
           pid: process.pid,
+          memoryDb: input.memoryFile,
         }),
       );
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/stats") {
+      const project = url.searchParams.get("project") || undefined;
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ...projectHostCounts(input.memory, project), memoryDb: input.memoryFile }));
       return;
     }
     const body = await readBody(req);
@@ -133,6 +144,33 @@ export function startControlServer(input: {
     } else if (req.method === "POST" && url.pathname === "/delete-project") {
       const workspace = String(parsed.workspacePath || "");
       deleteProject(input.memory, workspace);
+    } else if (req.method === "POST" && url.pathname === "/reset") {
+      try {
+        clearMemory(input.memory);
+        input.reingest?.();
+        input.state.lastSuccessAt = Date.now();
+        input.state.lastError = null;
+      } catch (error) {
+        input.state.lastError = (error as Error).message;
+        res.writeHead(500, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: input.state.lastError }));
+        return;
+      }
+    } else if (req.method === "POST" && url.pathname === "/refresh") {
+      try {
+        input.reingest?.();
+        input.state.lastSuccessAt = Date.now();
+        input.state.lastError = null;
+      } catch (error) {
+        input.state.lastError = (error as Error).message;
+        res.writeHead(500, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: input.state.lastError }));
+        return;
+      }
+      const project = typeof parsed.project === "string" ? parsed.project : undefined;
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ...projectHostCounts(input.memory, project), memoryDb: input.memoryFile }));
+      return;
     } else if (req.method === "POST" && url.pathname === "/workspace-change") {
       const files = Array.isArray(parsed.files) ? parsed.files : [];
       const sessionId = findOpenSession(input.memory, Date.now());
@@ -174,7 +212,20 @@ export async function serve(options: ServeOptions = {}): Promise<void> {
     lastError: null,
   };
   const token = randomBytes(16).toString("hex");
-  const server = startControlServer({ memory, state, token, home });
+  const watches = hostWatches({
+    ...options,
+    home,
+    cursorDb: options.cursorDb ?? process.env.DEVTRACE_CURSOR_DB,
+    qoderDb: options.qoderDb ?? process.env.DEVTRACE_QODER_DB,
+  });
+  const server = startControlServer({
+    memory,
+    state,
+    token,
+    home,
+    memoryFile,
+    reingest: () => ingestAvailable(memory, watches),
+  });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
@@ -183,12 +234,6 @@ export async function serve(options: ServeOptions = {}): Promise<void> {
   fs.writeFileSync(infoPath(home), JSON.stringify(info));
   if (process.platform !== "win32") fs.chmodSync(infoPath(home), 0o600);
 
-  const watches = hostWatches({
-    ...options,
-    home,
-    cursorDb: options.cursorDb ?? process.env.DEVTRACE_CURSOR_DB,
-    qoderDb: options.qoderDb ?? process.env.DEVTRACE_QODER_DB,
-  });
   let stamp = fileStamp(watches);
   const tick = () => {
     state.paused = readPaused(home);
@@ -203,7 +248,9 @@ export async function serve(options: ServeOptions = {}): Promise<void> {
   };
   tick();
   const watched = new Set<string>();
-  for (const file of [watches.cursor, watches.qoder]) watchDebounced(file, watched, tick);
+  for (const file of [watches.cursor, watches.qoder, path.join(watches.qoderHome, "projects"), path.join(watches.qoderHome, "cache", "projects")]) {
+    watchDebounced(file, watched, tick);
+  }
   const poll = setInterval(() => {
     const next = fileStamp(watches);
     if (next !== stamp) {
@@ -238,9 +285,9 @@ function watchDebounced(file: string, watched: Set<string>, tick: () => void): v
   if (fs.existsSync(wal)) watchDebounced(wal, watched, tick);
 }
 
-function fileStamp(watches: { cursor: string; qoder: string }): string {
-  return [watches.cursor, watches.qoder]
-    .flatMap((file) => [file, `${file}-wal`])
+function fileStamp(watches: { cursor: string; qoder: string; qoderHome: string }): string {
+  const files = [watches.cursor, watches.qoder].flatMap((file) => [file, `${file}-wal`]);
+  const dbStamp = files
     .map((file) => {
       try {
         return String(fs.statSync(file).mtimeMs);
@@ -249,6 +296,34 @@ function fileStamp(watches: { cursor: string; qoder: string }): string {
       }
     })
     .join(":");
+  return `${dbStamp}:${newestMtime(path.join(watches.qoderHome, "projects"))}:${newestMtime(path.join(watches.qoderHome, "cache", "projects"))}`;
+}
+
+function newestMtime(dir: string): string {
+  let newest = 0;
+  const stack = [dir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) continue;
+    let entries: fs.Dirent[] = [];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) stack.push(full);
+      else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+        try {
+          newest = Math.max(newest, fs.statSync(full).mtimeMs);
+        } catch {
+          /* skip a file that disappears mid-scan */
+        }
+      }
+    }
+  }
+  return String(newest);
 }
 
 function readBody(req: http.IncomingMessage): Promise<string> {

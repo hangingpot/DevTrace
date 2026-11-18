@@ -190,6 +190,14 @@ export function upsertSession(
   return id;
 }
 
+export function clearSessionMessages(db: MemoryDb, sessionId: string): void {
+  const ids = db.prepare(`SELECT id FROM turns WHERE session_id = ?`).all(sessionId) as { id: string }[];
+  const remove = db.prepare(`DELETE FROM turns_fts WHERE turn_id = ?`);
+  for (const row of ids) remove.run(row.id);
+  db.prepare(`DELETE FROM turns WHERE session_id = ?`).run(sessionId);
+  db.prepare(`DELETE FROM tool_messages WHERE session_id = ?`).run(sessionId);
+}
+
 export function upsertTurn(
   db: MemoryDb,
   turn: { sessionId: string; hostTurnId: string; role: "user" | "assistant"; content: string; createdAt?: number },
@@ -259,6 +267,22 @@ export function upsertFileChange(
     change.createdAt ?? null,
     change.hostChangeId,
   );
+}
+
+export function clearMemory(db: MemoryDb): void {
+  const tx = db.transaction(() => {
+    db.exec(`
+      DELETE FROM turns_fts;
+      DELETE FROM tool_messages;
+      DELETE FROM file_changes;
+      DELETE FROM turns;
+      DELETE FROM sessions;
+      DELETE FROM projects;
+      DELETE FROM watermarks;
+      DELETE FROM ingest_errors;
+    `);
+  });
+  tx();
 }
 
 export function deleteProject(db: MemoryDb, workspacePath: string): number {
