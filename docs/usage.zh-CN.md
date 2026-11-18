@@ -6,16 +6,13 @@ DevTrace 把 Cursor 和 Qoder 里的 Agent 对话，以及这些对话改过的�
 
 ## 安装
 
-需要本机已经安装 Node.js。插件用它启动采集进程和 MCP，不会把 MCP 发到 npm。
+需要本机已经安装 Node.js 20 或更新版本。插件用它启动采集进程和 MCP，不会把 MCP 发到 npm。
 
-1. 在 Cursor 或 Qoder 里按 `Cmd+Shift+P`（Windows 为 `Ctrl+Shift+P`）。
-2. 运行 **Extensions: Install from VSIX…**。
-3. 选择 `devtrace-0.1.0.vsix`。
-4. 重载窗口。
+在扩展市场搜索 **DevTrace**。搜索结果只有一个。macOS Intel、macOS Apple 芯片和 Windows 64 位是三份安装包，由编辑器按你的系统自动下载。
 
-装好后，左侧活动栏出现 **DevTrace**。点开就是「当前项目」。
+装好后重载窗口。左侧活动栏出现 **DevTrace**，点开就是「当前项目」。
 
-安装包是在打包那台电脑上编译的，因为里面带了本机的 SQLite 模块。换一台电脑或换到 Windows，要在那台机器上重新执行 `npm run package`。
+从安装包文件安装时，按 `Cmd+Shift+P`（Windows 为 `Ctrl+Shift+P`），运行 **Extensions: Install from VSIX…**，选择与本机系统一致的那一份 `.vsix`。
 
 ## 装好之后会自动发生什么
 
@@ -59,10 +56,10 @@ MCP 不会在安装时自动写好。每个编辑器配置一次。
 新用户的电脑上没有这个文件。命令写入的 `args` 是插件安装目录里的程序，例如：
 
 ```text
-~/.cursor/extensions/devtrace.devtrace-0.1.0/server/mcp/dist/cli.js
+~/.cursor/extensions/haiyongchen.devtrace-0.1.0/server/mcp/dist/cli.js
 ```
 
-Windows 上对应目录在 `%USERPROFILE%\.cursor\extensions\devtrace.devtrace-0.1.0\server\mcp\dist\cli.js`。Qoder 的扩展目录同理，位于 Qoder 的 extensions 文件夹。
+Windows 上对应目录在 `%USERPROFILE%\.cursor\extensions\haiyongchen.devtrace-0.1.0\server\mcp\dist\cli.js`。Qoder 的扩展目录同理，位于 Qoder 的 extensions 文件夹。
 
 生成的配置类似：
 

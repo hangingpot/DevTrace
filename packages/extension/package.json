@@ -4,7 +4,8 @@
   "description": "Capture Cursor and Qoder agent memory into a local database",
   "version": "0.1.0",
   "license": "MIT",
-  "publisher": "devtrace",
+  "publisher": "haiyongchen",
+  "icon": "media/devtrace-logo.png",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -17,7 +18,7 @@
         {
           "id": "devtrace",
           "title": "DevTrace",
-          "icon": "media/devtrace.svg"
+          "icon": "media/devtrace-logo.png"
         }
       ]
     },

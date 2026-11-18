@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { sqliteOpenOptions } from "./native.js";
 import { normalizeProjectPath } from "./paths.js";
 import {
   clearSessionMessages,
@@ -43,7 +44,7 @@ export function ingestQoder(
 
 function openHost(hostFile: string): Database.Database | undefined {
   if (!hostFile || !fs.existsSync(hostFile)) return undefined;
-  const host = new Database(hostFile, { readonly: true, fileMustExist: true });
+  const host = new Database(hostFile, sqliteOpenOptions({ readonly: true, fileMustExist: true }));
   host.pragma("query_only = ON");
   host.pragma("busy_timeout = 2000");
   return host;

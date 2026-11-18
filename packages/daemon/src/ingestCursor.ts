@@ -10,6 +10,7 @@ import {
   upsertTurn,
   type MemoryDb,
 } from "./db.js";
+import { sqliteOpenOptions } from "./native.js";
 import { cursorWorkspaceFolders } from "./paths.js";
 import { clip } from "./text.js";
 
@@ -31,7 +32,7 @@ export interface IngestStats {
 }
 
 export function ingestCursor(memory: MemoryDb, hostFile: string): IngestStats {
-  const host = new Database(hostFile, { readonly: true, fileMustExist: true });
+  const host = new Database(hostFile, sqliteOpenOptions({ readonly: true, fileMustExist: true }));
   host.pragma("query_only = ON");
   host.pragma("busy_timeout = 2000");
   const stats: IngestStats = { sessions: 0, turns: 0, fileChanges: 0, errors: 0 };

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import Database from "better-sqlite3";
+import { sqliteOpenOptions } from "./native.js";
 import { redactSecrets, toSearchText } from "./text.js";
 
 export type MemoryDb = Database.Database;
@@ -92,7 +93,7 @@ export function secureFile(file: string): void {
 
 export function openMemory(file: string): MemoryDb {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  const db = new Database(file);
+  const db = new Database(file, sqliteOpenOptions());
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");
   db.exec(SCHEMA);
@@ -106,7 +107,7 @@ export function openMemory(file: string): MemoryDb {
 }
 
 export function openReadonly(file: string): MemoryDb {
-  const db = new Database(file, { readonly: true, fileMustExist: true });
+  const db = new Database(file, sqliteOpenOptions({ readonly: true, fileMustExist: true }));
   db.pragma("query_only = ON");
   db.pragma("busy_timeout = 2000");
   return db;
