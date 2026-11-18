@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { cursorStateDb, formatStatus, hostFromAppName, mergeMcpConfig, writeMcpConfig } from "../src/pure.js";
+import { collectorEnv, cursorStateDb, formatStatus, hostFromAppName, mergeMcpConfig, serviceCli, writeMcpConfig } from "../src/pure.js";
 
 test("app name identifies Cursor and Qoder", () => {
   assert.equal(hostFromAppName("Cursor"), "cursor");
@@ -28,6 +28,28 @@ test("mcp config keeps unrelated servers", () => {
   assert.equal(saved.mcpServers.excel?.command, "excel");
   assert.equal(saved.mcpServers.devtrace?.command, "node");
   assert.equal(mergeMcpConfig({ mcpServers: { a: { command: "a", args: [] } } }, { command: "b", args: [] }).mcpServers.a?.command, "a");
+});
+
+test("packaged extension prefers the bundled collector", () => {
+  const root = path.join("/ext", "devtrace");
+  const bundled = path.join(root, "server", "daemon", "dist", "cli.js");
+  assert.equal(
+    serviceCli(root, "daemon", (file) => file === bundled),
+    bundled,
+  );
+  assert.equal(serviceCli(root, "mcp", () => false), path.join(root, "..", "mcp", "dist", "cli.js"));
+});
+
+test("collector env drops Electron variables that crash system Node", () => {
+  const env = collectorEnv(
+    { PATH: "/usr/bin", ELECTRON_RUN_AS_NODE: "1", NODE_OPTIONS: "--require hook", DYLD_LIBRARY_PATH: "/electron" },
+    { DEVTRACE_HOST: "cursor" },
+  );
+  assert.equal(env.PATH, "/usr/bin");
+  assert.equal(env.DEVTRACE_HOST, "cursor");
+  assert.equal(env.ELECTRON_RUN_AS_NODE, undefined);
+  assert.equal(env.NODE_OPTIONS, undefined);
+  assert.equal(env.DYLD_LIBRARY_PATH, undefined);
 });
 
 test("status text shows paused before errors", () => {

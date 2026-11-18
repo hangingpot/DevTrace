@@ -20,6 +20,17 @@ export function cursorStateDb(extensionGlobalStorage: string): string {
   return path.join(path.dirname(extensionGlobalStorage), "state.vscdb");
 }
 
+/** Packaged builds keep the collector beside the extension. The repo keeps it in the sibling package. */
+export function serviceCli(
+  extensionRoot: string,
+  kind: "daemon" | "mcp",
+  exists: (file: string) => boolean = fs.existsSync,
+): string {
+  const bundled = path.join(extensionRoot, "server", kind, "dist", "cli.js");
+  if (exists(bundled)) return bundled;
+  return path.join(extensionRoot, "..", kind, "dist", "cli.js");
+}
+
 export function qoderLocalDb(extensionGlobalStorage: string): string {
   const globalStorage = path.dirname(extensionGlobalStorage);
   const userDir = path.dirname(globalStorage);
@@ -54,6 +65,22 @@ export function writeMcpConfig(file: string, entry: McpEntry): void {
   }
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(mergeMcpConfig(existing, entry), null, 2)}\n`);
+}
+
+const COLLECTOR_ENV_BLOCKLIST = [
+  "ELECTRON_RUN_AS_NODE",
+  "ELECTRON_NO_ASAR",
+  "ATOM_SHELL_INTERNAL_RUN_AS_NODE",
+  "DYLD_LIBRARY_PATH",
+  "DYLD_INSERT_LIBRARIES",
+  "NODE_OPTIONS",
+];
+
+/** Cursor's extension host inherits Electron variables that make a system Node exit immediately. */
+export function collectorEnv(base: NodeJS.ProcessEnv, extra: Record<string, string>): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...base, ...extra };
+  for (const key of COLLECTOR_ENV_BLOCKLIST) delete env[key];
+  return env;
 }
 
 export function formatStatus(input: {

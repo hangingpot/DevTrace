@@ -12,7 +12,8 @@
   "scripts": {
     "build": "npm run build -w @devtrace/daemon && npm run build -w @devtrace/mcp && npm run build -w packages/extension",
     "test": "node --import tsx --test packages/daemon/test/*.test.ts packages/mcp/test/*.test.ts packages/extension/test/*.test.ts",
-    "verify:local": "tsx scripts/verify-local.ts"
+    "verify:local": "tsx scripts/verify-local.ts",
+    "package": "npm run build && node scripts/package-vsix.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",

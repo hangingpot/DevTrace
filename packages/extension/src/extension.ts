@@ -7,9 +7,11 @@ import * as vscode from "vscode";
 import {
   cursorStateDb,
   formatStatus,
+  collectorEnv,
   hostFromAppName,
   mcpConfigPath,
   qoderLocalDb,
+  serviceCli,
   writeMcpConfig,
   type DevHost,
 } from "./pure.js";
@@ -24,6 +26,8 @@ interface DaemonInfo {
 let statusBar: vscode.StatusBarItem | undefined;
 let poll: NodeJS.Timeout | undefined;
 let homeView: DevTraceViewProvider | undefined;
+let launch: { host: DevHost; cursorDb: string; qoderDb: string } | undefined;
+let starting = false;
 
 export function activate(context: vscode.ExtensionContext): void {
   const host = hostFromAppName(vscode.env.appName);
@@ -60,48 +64,77 @@ export function deactivate(): void {
 }
 
 function daemonCli(): string {
-  return path.join(__dirname, "..", "..", "daemon", "dist", "cli.js");
+  return serviceCli(path.join(__dirname, ".."), "daemon");
 }
 
 function mcpCli(): string {
-  return path.join(__dirname, "..", "..", "mcp", "dist", "cli.js");
+  return serviceCli(path.join(__dirname, ".."), "mcp");
 }
 
 function systemNode(): string {
   const configured = process.env.DEVTRACE_NODE;
   if (configured && fs.existsSync(configured)) return configured;
-  const candidates = [
-    "/opt/homebrew/bin/node",
-    "/usr/local/bin/node",
-    path.join(os.homedir(), ".nvm/versions/node", process.version, "bin/node"),
-  ];
+  const candidates = ["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node", ...nvmNodeBins()];
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate;
   }
   return "node";
 }
 
+function nvmNodeBins(): string[] {
+  const root = path.join(os.homedir(), ".nvm", "versions", "node");
+  if (!fs.existsSync(root)) return [];
+  return fs
+    .readdirSync(root)
+    .filter((name) => name.startsWith("v"))
+    .sort((a, b) => versionRank(b) - versionRank(a))
+    .map((name) => path.join(root, name, "bin", "node"));
+}
+
+function versionRank(name: string): number {
+  const [major = 0, minor = 0, patch = 0] = name
+    .replace(/^v/, "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+  return major * 1_000_000 + minor * 1_000 + patch;
+}
+
 function ensureDaemon(host: DevHost, cursorDb: string, qoderDb: string): void {
+  launch = { host, cursorDb, qoderDb };
   const info = readInfo();
   if (info && pidAlive(info.pid)) return;
-  const node = systemNode();
-  const child: ChildProcess = spawn(node, [daemonCli(), "serve"], {
+  if (starting) return;
+  starting = true;
+  const logPath = path.join(os.homedir(), ".devtrace", "daemon.log");
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  const logFd = fs.openSync(logPath, "a");
+  const child: ChildProcess = spawn(systemNode(), [daemonCli(), "serve"], {
     detached: true,
-    stdio: "ignore",
-    env: {
-      ...process.env,
+    stdio: ["ignore", "ignore", logFd],
+    env: collectorEnv(process.env, {
       DEVTRACE_CURSOR_DB: cursorDb,
       DEVTRACE_QODER_DB: qoderDb,
       DEVTRACE_HOST: host,
-    },
+    }),
+  });
+  child.on("error", () => {
+    starting = false;
+  });
+  child.on("exit", () => {
+    starting = false;
   });
   child.unref();
+  fs.closeSync(logFd);
+  setTimeout(() => {
+    starting = false;
+  }, 3_000);
 }
 
 async function refreshStatus(): Promise<void> {
   if (!statusBar) return;
+  if (launch) ensureDaemon(launch.host, launch.cursorDb, launch.qoderDb);
   const info = readInfo();
-  if (!info) {
+  if (!info || !pidAlive(info.pid)) {
     statusBar.text = "DevTrace: waiting";
     void homeView?.refresh();
     return;
@@ -113,6 +146,7 @@ async function refreshStatus(): Promise<void> {
     void homeView?.refresh();
   } catch (error) {
     statusBar.text = formatStatus({ paused: false, lastSuccessAt: null, lastError: (error as Error).message });
+    void homeView?.refresh();
   }
 }
 
@@ -171,7 +205,7 @@ async function loadProjectStats(reingest: boolean): Promise<ProjectStats> {
     return { project: null, memoryDb, cursor: { sessions: 0, turns: 0 }, qoder: { sessions: 0, turns: 0 }, updatedAt: new Date().toLocaleTimeString() };
   }
   const info = readInfo();
-  if (!info) {
+  if (!info || !pidAlive(info.pid)) {
     return { project, memoryDb, cursor: { sessions: 0, turns: 0 }, qoder: { sessions: 0, turns: 0 }, error: "采集进程没在运行" };
   }
   try {

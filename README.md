@@ -1,5 +1,7 @@
 # DevTrace
 
+Usage: [English](docs/usage.en.md) · [中文](docs/usage.zh-CN.md)
+
 DevTrace keeps a local memory of Cursor and Qoder agent conversations and the files those conversations changed. A background collector reads the editors' own session databases, a SQLite file on your machine stores the memory, and a read-only MCP server lets either editor ask about it later.
 
 Nothing is uploaded. The collector never writes to Cursor's or Qoder's databases.
@@ -37,21 +39,15 @@ node packages/mcp/dist/cli.js
 
 The editor extension starts `devtrace serve` for you. It does not link a native SQLite module and it does not open the editor databases.
 
+## Install a test package
+
+`npm run package` writes `devtrace-0.1.0.vsix` in this directory. In Cursor or Qoder, open Extensions, choose **Install from VSIX**, and reload the window. Then run **DevTrace: Configure MCP** once and reload again.
+
+Stop a previously started `node packages/daemon/dist/cli.js serve` before that reload. The installed extension starts the collector shipped inside the package. This package is built for the machine that ran `npm run package`, because the collector includes a native SQLite module.
+
 ## MCP
 
-In Cursor or Qoder, run **DevTrace: Configure MCP**. That adds a `devtrace` stdio server and leaves every other MCP server in place.
-
-```json
-{
-  "mcpServers": {
-    "devtrace": {
-      "command": "node",
-      "args": ["packages/mcp/dist/cli.js"],
-      "env": { "DEVTRACE_MEMORY_DB": "/Users/you/.devtrace/history.db" }
-    }
-  }
-}
-```
+In Cursor or Qoder, run **DevTrace: Configure MCP**. That adds a `devtrace` stdio server and leaves every other MCP server in place. The command writes the MCP program inside the installed extension, not `packages/mcp/dist/cli.js` from this repository. See the [user guide](docs/usage.en.md#configure-mcp).
 
 Tools:
 
